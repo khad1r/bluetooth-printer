@@ -1,0 +1,195 @@
+<!doctype html>
+<!--
+Copyright 2015 Google Inc. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html>
+
+<head>
+  <title>Bluetooth Printer</title>
+  <meta name="description" content="Print text and images to a Bluetooth Printer with a Web Bluetooth app.">
+
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+
+  <script src="bower_components/webcomponentsjs/webcomponents-lite.min.js"></script>
+
+  <!-- Polymer components -->
+  <link rel="import" href="bower_components/paper-progress/paper-progress.html">
+  <link rel="import" href="bower_components/paper-slider/paper-slider.html">
+  <link rel="import" href="bower_components/paper-button/paper-button.html">
+  <link rel="import" href="bower_components/paper-card/paper-card.html">
+  <link rel="import" href="bower_components/paper-dialog/paper-dialog.html">
+  <link rel="import" href="bower_components/paper-input/paper-input.html">
+  <link rel="import" href="bower_components/paper-input/paper-input-container.html">
+  <link rel="import" href="bower_components/paper-input/paper-input-error.html">
+  <link rel="import" href="bower_components/paper-input/paper-input-char-counter.html">
+  <link rel="import" href="bower_components/paper-input/paper-textarea.html">
+
+  <link rel="import" href="bower_components/paper-styles/color.html">
+  <link rel="stylesheet" href="bower_components/paper-styles/demo.css">
+
+  <style is="custom-style">
+    paper-progress {
+      width: 100%;
+    }
+
+    paper-progress.blue {
+      paper-progress-active-color: var(--paper-light-blue-500);
+      paper-progress-secondary-color: var(--paper-light-blue-100);
+    }
+
+    paper-slider {
+      width: 100%;
+    }
+
+    paper-slider.blue {
+      paper-slider-active-color: var(--paper-light-blue-500);
+      paper-slider-knob-color: var(--paper-light-blue-500);
+    }
+
+    paper-button {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    paper-button.colorful {
+      color: #4285f4;
+    }
+
+    paper-button[raised].colorful {
+      background: #4285f4;
+      color: #fff;
+    }
+
+    paper-button.blue {
+      color: var(--paper-light-blue-500);
+      paper-button-flat-focus-color: var(--paper-light-blue-50);
+    }
+
+    body {
+      background-color: var(--paper-grey-50);
+    }
+
+    #cards {
+      margin-left: auto;
+      margin-right: auto;
+      max-width: 400px;
+    }
+
+    paper-card {
+      margin-bottom: 5px;
+      margin-top: 5px;
+      width: 100%;
+    }
+
+    paper-card#logo {
+      @apply(--layout-vertical);
+      @apply(--layout-center);
+    }
+  </style>
+</head>
+
+<body unresolved>
+  <div id="cards">
+    <paper-card heading="Bluetooth Printer">
+      <div class="card-content">
+        <paper-progress id="progress" indeterminate></paper-progress>
+      </div>
+    </paper-card>
+    <paper-card>
+      <div class="card-content">
+        <div id="receipt">
+          <img src="./logo-black.png" width="20%">
+          <h2>Store Name</h2>
+          <p>Date: 2024-07-15</p>
+          <p>Item 1: $10.00</p>
+          <p>Item 2: $15.00</p>
+          <p>Item 3: $20.00</p>
+          <hr>
+          <p>Total: $45.00</p>
+        </div>
+      </div>
+    </paper-card>
+
+    <paper-card>
+      <div class="card-content">
+        <paper-textarea id="message" label="Enter Message"></paper-textarea>
+      </div>
+    </paper-card>
+    <paper-card>
+      <div class="card-content">
+        <paper-button id="print" raised class="colorful">Print</paper-button>
+      </div>
+    </paper-card>
+
+    <paper-dialog id="dialog">
+      <h2>Error</h2>
+      <p>Could not connect to bluetooth device!</p>
+    </paper-dialog>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"
+    integrity="sha512-01CJ9/g7e8cUmY0DFTMcUw/ikS799FHiOA0eyHsUWfOetgbx/t6oV4otQ5zXKQyIrQGTHSmRVPIgrgLcZi/WMA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="./bluetooth-printer.js" defer></script>
+  <script>
+    'use strict';
+    document.addEventListener('WebComponentsReady', function () {
+      let progress = document.querySelector('#progress');
+      let dialog = document.querySelector('#dialog');
+      let message = document.querySelector('#message');
+      let printButton = document.querySelector('#print');
+      let receipt = document.querySelector('#receipt');
+      progress.hidden = true;
+
+      const BTPrinter = new ThermalPrinter();
+      const printBitmapData = new PrintBitmapData(receipt);
+      // if you want some kind of print preview 
+      // document.body.appendChild(printBitmapData.imgHTMLElement);
+      // document.body.appendChild(printBitmapData.canvasHTMLElement);
+
+      // BTPrinter.onConnected = async (device) => {
+      //   console.log(`connected to ${device.name}`)
+      //   await BTPrinter.sendImageData(await printBitmapData.getImagePrintData());
+      //   await BTPrinter.sendTextData(message.value);
+      // }
+      // BTPrinter.onDiConnected = (device) => {
+      //   handleError(`Disconected from ${device.name}`);
+      // }
+
+      function handleError(error) {
+        console.log(error);
+        progress.hidden = true;
+        dialog.open();
+      }
+      printButton.addEventListener('click', async function () {
+        progress.hidden = false;
+        try {
+          await BTPrinter.connect();
+          await BTPrinter.sendImageData(await printBitmapData.getImagePrintData());
+          await BTPrinter.sendTextData(message.value);
+          progress.hidden = true;
+        } catch (error) {
+          handleError(error);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
