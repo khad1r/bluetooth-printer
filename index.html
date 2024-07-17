@@ -112,29 +112,10 @@ limitations under the License.
         <paper-progress id="progress" indeterminate></paper-progress>
       </div>
     </paper-card>
-    <paper-card>
-      <div class="card-content">
-        <div id="receipt">
-          <img src="./logo-black.png" width="20%">
-          <h2>Store Name</h2>
-          <p>Date: 2024-07-15</p>
-          <p>Item 1: $10.00</p>
-          <p>Item 2: $15.00</p>
-          <p>Item 3: $20.00</p>
-          <hr>
-          <p>Total: $45.00</p>
-        </div>
-      </div>
-    </paper-card>
 
     <paper-card>
       <div class="card-content">
-        <paper-textarea id="message" label="Enter Message"></paper-textarea>
-      </div>
-    </paper-card>
-    <paper-card>
-      <div class="card-content">
-        <paper-button id="print" raised class="colorful">Print</paper-button>
+        <paper-button id="print" raised class="colorful">Connect</paper-button>
       </div>
     </paper-card>
 
@@ -143,9 +124,12 @@ limitations under the License.
       <p>Could not connect to bluetooth device!</p>
     </paper-dialog>
   </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"
-    integrity="sha512-01CJ9/g7e8cUmY0DFTMcUw/ikS799FHiOA0eyHsUWfOetgbx/t6oV4otQ5zXKQyIrQGTHSmRVPIgrgLcZi/WMA=="
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/NielsLeenheer/WebBluetoothReceiptPrinter@main/dist/webbluetooth-receipt-printer.umd.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/NielsLeenheer/ThermalPrinterEncoder@main/dist/thermal-printer-encoder.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/NielsLeenheer/EscPosEncoder@master/dist/esc-pos-encoder.umd.js"></script>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.34/moment-timezone-with-data.min.js"></script> -->
   <script src="./bluetooth-printer.js" defer></script>
   <script>
     'use strict';
@@ -153,41 +137,133 @@ limitations under the License.
       let progress = document.querySelector('#progress');
       let dialog = document.querySelector('#dialog');
       let message = document.querySelector('#message');
-      let printButton = document.querySelector('#print');
       let receipt = document.querySelector('#receipt');
+      let printButton = document.querySelector('#print');
+
+      let img = new Image();
+      img.src = './cropped-favicon-1-32x32 (1).png'
+
+      printButton.statusConnected = false
+      printButton.enable = true
+      printButton.connected = (value = !printButton.statusConnected) => {
+        printButton.statusConnected = value
+        printButton.textContent = (value) ? 'Print' : 'Connect'
+      }
+      let encoder = new EscPosEncoder({
+        imageMode: 'raster',
+      });
+      let lastUsedDevice
       progress.hidden = true;
 
       const BTPrinter = new ThermalPrinter();
-      const printBitmapData = new PrintBitmapData(receipt);
-      // if you want some kind of print preview 
-      // document.body.appendChild(printBitmapData.imgHTMLElement);
-      // document.body.appendChild(printBitmapData.canvasHTMLElement);
 
-      // BTPrinter.onConnected = async (device) => {
-      //   console.log(`connected to ${device.name}`)
-      //   await BTPrinter.sendImageData(await printBitmapData.getImagePrintData());
-      //   await BTPrinter.sendTextData(message.value);
-      // }
-      // BTPrinter.onDiConnected = (device) => {
-      //   handleError(`Disconected from ${device.name}`);
-      // }
+      BTPrinter.onConnected = async (device) => {
 
-      function handleError(error) {
-        console.log(error);
-        progress.hidden = true;
-        dialog.open();
+        console.log(`Connected to ${device.name} (#${device.id})`);
+        /* Store device for reconnecting */
+        lastUsedDevice = device;
+        printButton.connected(true)
+      }
+      BTPrinter.onDisconnected = (device) => {
+        printButton.connected(false)
+        handleError(`Disconected from ${device.name}`);
+      }
+
+      let connect = () => {
+        try {
+          BTPrinter.connect(lastUsedDevice || null);
+          // await BTPrinter.sendTextData(message.value);
+          progress.hidden = true;
+          lastUsedDevice = null;
+        } catch (error) {
+          handleError(error);
+        }
+      }
+      console.log(BTPrinter);
+
+      let encode = async () => {
+        let trans = {
+          'transId': Math.floor(Math.random() * 999999).toString(),
+          'date': Date(),
+          'customer': 'Abdul Kadir Jaelani QQ Abdul Kadir Jaelani',
+          'customer_account': '01.10.000001.01',
+          'credit': 'Rp. ' + Intl.NumberFormat('id-ID', {
+            currency: 'IDR',
+            minimumFractionDigits: 0
+          }).format(10000),
+          'note': '',
+          'final_balance': 'Rp. ' + Intl.NumberFormat('id-ID', {
+            currency: 'IDR',
+            minimumFractionDigits: 0
+          }).format(1000000000),
+          'AO': 'Zida'
+        }
+        /** With 58 mm Thermal Printer is 32 Char 
+         * check documentation on : https://github.com/NielsLeenheer/EscPosEncoder
+        */
+        return encoder
+          .initialize()
+          .align('center')
+          // .image(document.querySelector('img#logi'), 64, 64, 'bayer', 150) // img harus sudah di load dan gambar bisa di fetch dari js
+          // .image(img, 64, 64, 'bayer', 150) // img harus sudah di load dan gambar bisa di fetch dari js
+          .image(img, 64, 64, 'threshold', 255) // img harus sudah di load dan gambar bisa di fetch dari js
+          .height(2).line('Bank Gresik').height(1)
+          .size('small')
+          .line('Jl. Basuki Rahmat No. 18, Gresik 61114')
+          .line('Telp/Wa (031)3988875 | Telp2 (031)3988874')
+          .bold(true).line('www.bankgresik.co.id | @Bankgresik').bold(false)
+          .size('normal')
+          .bold(true).line('~'.repeat(32)).bold(false)
+          .bold(true).height(2).width(2).line(trans.credit).width(1).height(1).bold(false)
+          .newline()
+          .table(
+            [
+              { width: 11,/*  marginRight: 2, */ align: 'left' },
+              { width: 1, align: 'center' },
+              { width: 20, align: 'right' }
+            ],
+            [
+              ['Nasabah', ':', trans.customer],
+              ['Rekening', ':', trans.customer_account],
+              ['Setoran', ':', trans.credit],
+              ['Saldo Akhir', ':', (encoder) => encoder.bold().text(trans.final_balance).bold()],
+              ['Keterangan', ':', trans.note],
+              ['-'.repeat(11), '-', '-'.repeat(20)],
+              ['Petugas', ':', trans.AO],
+            ]
+          )
+          .bold(true).line('-'.repeat(32)).bold(false)
+          .line(`No Trans. ${trans.transId}`)
+          .barcode(`${trans.transId}`, 'code93', 40)
+          .size('small')
+          .line(trans.date)
+          .line('Simpan Tanda Terima Ini Sebagai Tanda Bukti Yang Sah', 32)
+          .size('normal')
+
+          .newline().newline()
+          .encode();
+
       }
       printButton.addEventListener('click', async function () {
         progress.hidden = false;
+        if (!printButton.statusConnected) {
+          connect();
+          return;
+        }
         try {
-          await BTPrinter.connect();
-          await BTPrinter.sendImageData(await printBitmapData.getImagePrintData());
-          await BTPrinter.sendTextData(message.value);
+          await BTPrinter.print(await encode());
+          // await BTPrinter.sendTextData(message.value);
           progress.hidden = true;
         } catch (error) {
           handleError(error);
         }
       });
+
+      function handleError(error) {
+        console.error(error);
+        progress.hidden = true;
+        dialog.open();
+      }
     });
   </script>
 </body>
