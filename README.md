@@ -26,7 +26,7 @@ There are 2 Classes :
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"
     integrity="sha512-01CJ9/g7e8cUmY0DFTMcUw/ikS799FHiOA0eyHsUWfOetgbx/t6oV4otQ5zXKQyIrQGTHSmRVPIgrgLcZi/WMA=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://raw.githubusercontent.com/khad1r/bluetooth-printer/main/bluetooth-printer.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/gh/khad1r/bluetooth-printer@main/bluetooth-printer.js" defer></script>
 ```
 
 ### ThermalPrinter Class
